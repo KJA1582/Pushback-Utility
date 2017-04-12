@@ -1,0 +1,35 @@
+﻿using System;
+using System.IO;
+using System.Linq;
+using System.Xml.Linq;
+
+namespace ConsoleApp2
+{
+    class Program
+    {
+        static void Main(string[] args)
+        {
+            while (true)
+            {
+                Console.Out.Write("ICAO ID of airport: ");
+                string line = Console.In.ReadLine();
+                Console.Out.Write("Active .bgl: ");
+                try
+                {
+                    Console.Out.WriteLine(activeFiles[line]);
+                    BGLFile airportFile = new BGLFile(activeFiles[line]);
+                    Airport airport = airportFile.findAirport(line);
+                    foreach (Subrecord subrecord in airport.subrecords)
+                    {
+                        if (subrecord.id == 0x003D)
+                            Console.Out.WriteLine("Number of parkings: " +subrecord.numberOfPoints);
+                    }   
+                }
+                catch (System.Collections.Generic.KeyNotFoundException e)
+                {
+                    Console.WriteLine("Airport not found");
+                }
+            }
+        }
+    }
+}
