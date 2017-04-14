@@ -2,7 +2,7 @@
 using System.Device.Location;
 using System.Text;
 
-namespace Pushback_Utility.BGLParser
+namespace BGLParser
 {
     /// <summary>
     /// FSX bgl Taxiway parking Subrecord as per

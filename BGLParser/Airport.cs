@@ -1,7 +1,6 @@
 ﻿using System;
-using System.Collections.Generic;
 
-namespace Pushback_Utility.BGLParser
+namespace BGLParser
 {
     /// <summary>
     /// FSX bgl Airport Record as per

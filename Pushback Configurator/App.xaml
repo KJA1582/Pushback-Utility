@@ -1,8 +1,7 @@
 ﻿<Application x:Class="Pushback_Configurator.App"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             xmlns:local="clr-namespace:Pushback_Configurator"
-             StartupUri="MainWindow.xaml">
+             Startup="App_Startup">
     <Application.Resources>
          
     </Application.Resources>

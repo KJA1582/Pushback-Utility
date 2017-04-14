@@ -1,6 +1,6 @@
 ﻿using Microsoft.FlightSimulator.SimConnect;
 using Pushback_Utility.AppUI;
-using Pushback_Utility.BGLParser;
+using BGLParser;
 using System;
 using System.Device.Location;
 using System.Runtime.InteropServices;

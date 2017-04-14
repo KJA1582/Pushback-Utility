@@ -1,12 +1,15 @@
-﻿using Pushback_Utility.SimConnectInterface;
+﻿using BGLParser;
+using Pushback_Configurator.SimConnectInterface;
 using System;
 using System.ComponentModel;
 using System.Windows;
-using System.Windows.Controls;
 using System.Windows.Interop;
 
-namespace Pushback_Utility.AppUI
+namespace Pushback_Configurator.AppUI
 {
+    /// <summary>
+    /// Interaction logic for MainWindow.xaml
+    /// </summary>
     public partial class MainWindow : Window
     {
         // ------------------------------------------------------------------------------
@@ -14,6 +17,7 @@ namespace Pushback_Utility.AppUI
         // ------------------------------------------------------------------------------
 
         public Sim sim;
+        internal ActiveFiles activeFiles;
 
         // WndProc
         private const uint WM_USER_SIMCONNECT = 0x0402;
@@ -30,6 +34,7 @@ namespace Pushback_Utility.AppUI
         {
             InitializeComponent();
             sim = new Sim(this);
+            activeFiles = new ActiveFiles(((App)Application.Current).registryPath);
         }
 
         /// <summary>
@@ -52,6 +57,7 @@ namespace Pushback_Utility.AppUI
             handle = (new WindowInteropHelper(this)).Handle;
             HwndSource src = HwndSource.FromHwnd(handle);
             src.AddHook(new HwndSourceHook(WndProc));
+            sim.changeConnection(handle, WM_USER_SIMCONNECT);
         }
 
         /// <summary>
@@ -74,28 +80,24 @@ namespace Pushback_Utility.AppUI
             return IntPtr.Zero;
         }
 
-        /// <summary>
-        /// Connects or disconnects to/from FSX
-        /// </summary>
-        /// <param name="sender"></param>
-        /// <param name="e"></param>
-        private void Button_Click(object sender, RoutedEventArgs e)
+        private void customize(object sender, RoutedEventArgs e)
         {
-            if (sim.connected)
-            {
-                ((Button)sender).Content = "Connect to FS";
-                sim.changeConnection(handle, WM_USER_SIMCONNECT);
-            }
-            else
-            {
-                ((Button)sender).Content = "Disconnect from FS";
-                sim.changeConnection(handle, WM_USER_SIMCONNECT);
-            }
+            sim.customizePosition();
         }
 
-        private void Button_Click_1(object sender, RoutedEventArgs e)
+        private void next(object sender, RoutedEventArgs e)
         {
-            sim.selected();
+            sim.cycle();
+        }
+
+        private void set(object sender, RoutedEventArgs e)
+        {
+            sim.set();
+        }
+
+        private void finish(object sender, RoutedEventArgs e)
+        {
+            sim.finish();
         }
     }
 }

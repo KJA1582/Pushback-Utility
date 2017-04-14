@@ -1,7 +1,7 @@
 ﻿using System;
 using System.IO;
 
-namespace Pushback_Utility.BGLParser
+namespace BGLParser
 {
     public class BGLFile
     {

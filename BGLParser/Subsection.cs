@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace Pushback_Utility.BGLParser
+namespace BGLParser
 {
     /// <summary>
     /// FSX bgl Subsections as per

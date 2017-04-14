@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Device.Location;
 
-namespace Pushback_Utility.BGLParser
+namespace BGLParser
 {
     /// <summary>
     /// FSX bgl Taxiway point Subrecord as per
