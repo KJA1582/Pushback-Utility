@@ -9,9 +9,9 @@ namespace Pushback_Utility.BGLParser
     /// </summary>
     public class TaxiwayPoint : Taxiway
     {
-        internal Point[] points;
+        private Point[] points;
 
-        internal class Point
+        public class Point
         {
             public int index { private set; get; } = 0;
             public byte type { private set; get; } = 0;
@@ -48,7 +48,7 @@ namespace Pushback_Utility.BGLParser
             }
         }
 
-        internal Point findByIndex(int index)
+        public Point findByIndex(int index)
         {
             foreach (Point point in points)
             {

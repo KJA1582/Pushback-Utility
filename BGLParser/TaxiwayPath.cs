@@ -9,8 +9,8 @@ namespace Pushback_Utility.BGLParser
     /// </summary>
     public class TaxiwayPath : Taxiway
     {
-        internal Point[] points;
-        internal enum TYPE : byte
+        private Point[] points;
+        public enum TYPE : byte
         {
             TAXI = 0x1,
             RUNWAY = 0x2,
@@ -18,7 +18,7 @@ namespace Pushback_Utility.BGLParser
             PATH = 0x4,
             CLOSED = 0x5,
         };
-        internal class Point
+        public class Point
         {
             public UInt16 startPointIndex { private set; get; } = 0;
             public UInt16 endPointIndex { private set; get; } = 0;
@@ -95,7 +95,7 @@ namespace Pushback_Utility.BGLParser
         /// <param name="type"></param>
         /// <param name="endPointIndex"></param>
         /// <returns></returns>
-        internal Point getBy(TYPE type, UInt16 index)
+        public Point getBy(TYPE type, UInt16 index)
         {
             foreach (Point point in points)
             {
@@ -114,7 +114,7 @@ namespace Pushback_Utility.BGLParser
         /// <param name="startPointIndex"></param>
         /// <param name="endPointIndex"></param>
         /// <returns></returns>
-        internal List<Tuple<Point, int>> getBy(bool invertType, TYPE type, UInt16 index)
+        public List<Tuple<Point, int>> getBy(bool invertType, TYPE type, UInt16 index)
         {
             List<Tuple<Point, int>> returnList = new List<Tuple<Point, int>>();
             foreach (Point point in points)

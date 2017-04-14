@@ -1,28 +1,24 @@
-﻿using Microsoft.Win32;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Device.Location;
+using System.Globalization;
 using System.IO;
-using System.Windows;
 using System.Xml.Linq;
 
 namespace Pushback_Utility.BGLParser
 {
     public class ActiveFiles
     {
-        
         internal Dictionary<string, object[]> activeFiles = new Dictionary<string, object[]>();
 
-       
-
-        public ActiveFiles()
+        public ActiveFiles(string registryPath)
         {
-            IEnumerable<XElement> airports = XElement.Parse(File.ReadAllText(((App)Application.Current).registryPath + "runways.xml")).Elements("ICAO");
+            IEnumerable<XElement> airports = XElement.Parse(File.ReadAllText(registryPath + "runways.xml")).Elements("ICAO");
             foreach (XElement airport in airports)
                 activeFiles.Add((string)airport.Attribute("id"), 
                                 new object[] { airport.Element("File").Value,
-                                Convert.ToDouble(airport.Element("Latitude").Value),
-                                Convert.ToDouble(airport.Element("Longitude").Value) });
+                                Convert.ToDouble(airport.Element("Latitude").Value, CultureInfo.InvariantCulture),
+                                Convert.ToDouble(airport.Element("Longitude").Value, CultureInfo.InvariantCulture) });
         }
 
         public Tuple<string, string> getClosestAirportTo(GeoCoordinate position)

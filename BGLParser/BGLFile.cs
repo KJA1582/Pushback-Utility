@@ -1,6 +1,5 @@
 ﻿using System;
 using System.IO;
-using System.Windows;
 
 namespace Pushback_Utility.BGLParser
 {
@@ -8,10 +7,10 @@ namespace Pushback_Utility.BGLParser
     {
         private Section[] sections;
 
-        public BGLFile(string filePath)
+        public BGLFile(string registryPath, string filePath)
         {
             
-            var data = File.ReadAllBytes(((App)Application.Current).registryPath + filePath);
+            var data = File.ReadAllBytes(registryPath + filePath);
             UInt32 sectionsInFile = BitConverter.ToUInt32(data, 0x14);
             int offset = 0x38; // After BGL header 
             sections = new Section[sectionsInFile];

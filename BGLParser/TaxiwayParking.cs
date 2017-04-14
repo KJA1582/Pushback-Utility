@@ -10,9 +10,9 @@ namespace Pushback_Utility.BGLParser
     /// </summary>
     public class TaxiwayParking : Taxiway
     {
-        internal Point[] points;
+        private Point[] points;
 
-        internal class Point
+        public class Point
         {
             public int index { private set; get; } = 0;
             public byte airlineCodeCount { private set; get; } = 0;
@@ -78,7 +78,7 @@ namespace Pushback_Utility.BGLParser
             }
         }
 
-        internal Point findClosestTo(GeoCoordinate position)
+        public Point findClosestTo(GeoCoordinate position)
         {
             double lastDistance = Double.MaxValue;
             Point current = null;

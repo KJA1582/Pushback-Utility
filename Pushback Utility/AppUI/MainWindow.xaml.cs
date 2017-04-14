@@ -40,7 +40,8 @@ namespace Pushback_Utility.AppUI
         protected override void OnClosing(CancelEventArgs e)
         {
             // Handle closing logic, set e.Cancel as needed
-            sim.changeConnection(handle, WM_USER_SIMCONNECT);
+            if (sim.connected)
+                sim.changeConnection(handle, WM_USER_SIMCONNECT);
         }
 
         /// <summary>

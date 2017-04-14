@@ -143,7 +143,7 @@ namespace Pushback_Utility.SimConnectInterface
                 try
                 {
                     // Load list of active scenery files
-                    activeFiles = new ActiveFiles();
+                    activeFiles = new ActiveFiles(((App)Application.Current).registryPath);
                     // Connect to FS
                     simconnect = new SimConnect("PBUtil", handle, ID, null, 0);
                     // Set recv handlers
@@ -336,7 +336,7 @@ namespace Pushback_Utility.SimConnectInterface
                     GeoCoordinate userPosition = new GeoCoordinate(((positionReport)data.dwData[0]).latitude, 
                                                               ((positionReport)data.dwData[0]).longitude);
                     Tuple<string, string> closestAirport = activeFiles.getClosestAirportTo(userPosition);
-                    airport = new BGLFile(closestAirport.Item2).findAirport(closestAirport.Item1);
+                    airport = new BGLFile(((App)Application.Current).registryPath, closestAirport.Item2).findAirport(closestAirport.Item1);
                     TaxiwayPath.Point parkingPath = null;
                     // Search closest parking point, i.e. user within radius
                     try
