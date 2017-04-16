@@ -119,5 +119,10 @@ namespace Pushback_Configurator.AppUI
         {
             sim.finish();
         }
+
+        private void cancel(object sender, RoutedEventArgs e)
+        {
+            sim.cancel();
+        }
     }
 }
