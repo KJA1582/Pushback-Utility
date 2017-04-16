@@ -40,7 +40,8 @@ namespace BGLParser
         /// <param name="numberOfRecords"></param>
         /// <param name="dataOffset"></param>
         /// <param name="totalDataSize"></param>
-        public Subsection(UInt32 qmidA, UInt32 qmidB, UInt32 numberOfRecords, UInt32 dataOffset, UInt32 totalDataSize, byte[] file)
+        public Subsection(UInt32 qmidA, UInt32 qmidB, UInt32 numberOfRecords, UInt32 dataOffset, UInt32 totalDataSize, 
+                          byte[] file)
         {
             this.qmidA = qmidA;
             this.qmidB = qmidB;

@@ -80,21 +80,41 @@ namespace Pushback_Configurator.AppUI
             return IntPtr.Zero;
         }
 
+        /// <summary>
+        /// Customizes the current position
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
         private void customize(object sender, RoutedEventArgs e)
         {
             sim.customizePosition();
         }
 
+        /// <summary>
+        /// Cycles through available waypoints
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
         private void next(object sender, RoutedEventArgs e)
         {
             sim.cycle();
         }
 
+        /// <summary>
+        /// Marks current waypoint as part of pushback
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
         private void set(object sender, RoutedEventArgs e)
         {
             sim.set();
         }
 
+        /// <summary>
+        /// Saves the sequence to file
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
         private void finish(object sender, RoutedEventArgs e)
         {
             sim.finish();

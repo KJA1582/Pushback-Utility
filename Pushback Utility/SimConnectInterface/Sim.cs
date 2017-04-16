@@ -147,9 +147,9 @@ namespace Pushback_Utility.SimConnectInterface
                     // Connect to FS
                     simconnect = new SimConnect("PBUtil", handle, ID, null, 0);
                     // Set recv handlers
-                    simconnect.OnRecvQuit += new SimConnect.RecvQuitEventHandler(simconnect_OnRecvQuit);
-                    simconnect.OnRecvEvent += new SimConnect.RecvEventEventHandler(simconnect_OnRecvEvent);
-                    simconnect.OnRecvSimobjectData += new SimConnect.RecvSimobjectDataEventHandler(simconnect_OnRecvSimobjectData);
+                    simconnect.OnRecvQuit += new SimConnect.RecvQuitEventHandler(onRecvQuit);
+                    simconnect.OnRecvEvent += new SimConnect.RecvEventEventHandler(onRecvEvent);
+                    simconnect.OnRecvSimobjectData += new SimConnect.RecvSimobjectDataEventHandler(onRecvSimobjectData);
 
                     // Events subscription
                     simconnect.SubscribeToSystemEvent(EVENTS.simStart, "SimStart");
@@ -158,7 +158,8 @@ namespace Pushback_Utility.SimConnectInterface
                     // Start of pushback with Shift+P
                     simconnect.MapClientEventToSimEvent(EVENTS.eventShiftP, null);
                     simconnect.AddClientEventToNotificationGroup(GROUPS.groupKeys, EVENTS.eventShiftP, false);
-                    simconnect.MapInputEventToClientEvent(INPUT_GROUPS.inputStart, "shift+p", EVENTS.eventShiftP, 1, null, 0, true);
+                    simconnect.MapInputEventToClientEvent(INPUT_GROUPS.inputStart, "shift+p", EVENTS.eventShiftP, 1, null, 0, 
+                                                          true);
 
                     // Group priorities
                     simconnect.SetNotificationGroupPriority(GROUPS.groupKeys, SimConnect.SIMCONNECT_GROUP_PRIORITY_HIGHEST);
@@ -169,14 +170,23 @@ namespace Pushback_Utility.SimConnectInterface
                     simconnect.SetInputGroupState(INPUT_GROUPS.inputStart, 1);
 
                     // Define data structures
-                    simconnect.AddToDataDefinition(DATA_DEFINITIONS.pushbackStartCondition, "SIM ON GROUND", null, SIMCONNECT_DATATYPE.FLOAT64, 0.0f, SimConnect.SIMCONNECT_UNUSED);
-                    simconnect.AddToDataDefinition(DATA_DEFINITIONS.pushbackStartCondition, "BRAKE PARKING INDICATOR", null, SIMCONNECT_DATATYPE.FLOAT64, 0.0f, SimConnect.SIMCONNECT_UNUSED);
-                    simconnect.AddToDataDefinition(DATA_DEFINITIONS.positionReport, "PLANE LATITUDE", "degrees", SIMCONNECT_DATATYPE.FLOAT64, 0.0f, SimConnect.SIMCONNECT_UNUSED);
-                    simconnect.AddToDataDefinition(DATA_DEFINITIONS.positionReport, "PLANE LONGITUDE", "degrees", SIMCONNECT_DATATYPE.FLOAT64, 0.0f, SimConnect.SIMCONNECT_UNUSED);
-                    simconnect.AddToDataDefinition(DATA_DEFINITIONS.positionReport, "PLANE ALTITUDE", "meters", SIMCONNECT_DATATYPE.FLOAT64, 0.0f, SimConnect.SIMCONNECT_UNUSED);
-                    simconnect.AddToDataDefinition(DATA_DEFINITIONS.positionReport, "PLANE HEADING DEGREES TRUE", "degrees", SIMCONNECT_DATATYPE.FLOAT64, 0.0f, SimConnect.SIMCONNECT_UNUSED);
-                    simconnect.AddToDataDefinition(DATA_DEFINITIONS.userVelocityZ, "VELOCITY BODY Z", "meters/second", SIMCONNECT_DATATYPE.FLOAT64, 0.0f, SimConnect.SIMCONNECT_UNUSED);
-                    simconnect.AddToDataDefinition(DATA_DEFINITIONS.userVelocityRotY, "ROTATION VELOCITY BODY Y", "degrees per second", SIMCONNECT_DATATYPE.FLOAT64, 0.0f, SimConnect.SIMCONNECT_UNUSED);
+                    simconnect.AddToDataDefinition(DATA_DEFINITIONS.pushbackStartCondition, "SIM ON GROUND", null, 
+                                                   SIMCONNECT_DATATYPE.FLOAT64, 0.0f, SimConnect.SIMCONNECT_UNUSED);
+                    simconnect.AddToDataDefinition(DATA_DEFINITIONS.pushbackStartCondition, "BRAKE PARKING INDICATOR", null, 
+                                                   SIMCONNECT_DATATYPE.FLOAT64, 0.0f, SimConnect.SIMCONNECT_UNUSED);
+                    simconnect.AddToDataDefinition(DATA_DEFINITIONS.positionReport, "PLANE LATITUDE", "degrees", 
+                                                   SIMCONNECT_DATATYPE.FLOAT64, 0.0f, SimConnect.SIMCONNECT_UNUSED);
+                    simconnect.AddToDataDefinition(DATA_DEFINITIONS.positionReport, "PLANE LONGITUDE", "degrees", 
+                                                   SIMCONNECT_DATATYPE.FLOAT64, 0.0f, SimConnect.SIMCONNECT_UNUSED);
+                    simconnect.AddToDataDefinition(DATA_DEFINITIONS.positionReport, "PLANE ALTITUDE", "meters", 
+                                                   SIMCONNECT_DATATYPE.FLOAT64, 0.0f, SimConnect.SIMCONNECT_UNUSED);
+                    simconnect.AddToDataDefinition(DATA_DEFINITIONS.positionReport, "PLANE HEADING DEGREES TRUE", "degrees", 
+                                                   SIMCONNECT_DATATYPE.FLOAT64, 0.0f, SimConnect.SIMCONNECT_UNUSED);
+                    simconnect.AddToDataDefinition(DATA_DEFINITIONS.userVelocityZ, "VELOCITY BODY Z", "meters/second", 
+                                                   SIMCONNECT_DATATYPE.FLOAT64, 0.0f, SimConnect.SIMCONNECT_UNUSED);
+                    simconnect.AddToDataDefinition(DATA_DEFINITIONS.userVelocityRotY, "ROTATION VELOCITY BODY Y", 
+                                                   "degrees per second", SIMCONNECT_DATATYPE.FLOAT64, 0.0f, 
+                                                   SimConnect.SIMCONNECT_UNUSED);
                     // IMPORTANT: register it with the simconnect managed wrapper marshaller
                     // if you skip this step, you will only receive a uint in the .dwData field.
                     simconnect.RegisterDataDefineStruct<pushbackStartCondition>(DATA_DEFINITIONS.pushbackStartCondition);
@@ -278,7 +288,7 @@ namespace Pushback_Utility.SimConnectInterface
         /// </summary>
         /// <param name="sender"></param>
         /// <param name="data"></param>
-        private void simconnect_OnRecvQuit(SimConnect sender, SIMCONNECT_RECV data)
+        private void onRecvQuit(SimConnect sender, SIMCONNECT_RECV data)
         {
             closeConnection();
         }
@@ -288,7 +298,7 @@ namespace Pushback_Utility.SimConnectInterface
         /// </summary>
         /// <param name="sender"></param>
         /// <param name="data"></param>
-        private void simconnect_OnRecvSimobjectData(SimConnect sender, SIMCONNECT_RECV_SIMOBJECT_DATA data)
+        private void onRecvSimobjectData(SimConnect sender, SIMCONNECT_RECV_SIMOBJECT_DATA data)
         {
             bool pBrake = false;
             switch ((REQUESTS)data.dwRequestID)
@@ -336,7 +346,8 @@ namespace Pushback_Utility.SimConnectInterface
                     GeoCoordinate userPosition = new GeoCoordinate(((positionReport)data.dwData[0]).latitude, 
                                                               ((positionReport)data.dwData[0]).longitude);
                     Tuple<string, string> closestAirport = activeFiles.getClosestAirportTo(userPosition);
-                    airport = new BGLFile(((App)Application.Current).registryPath, closestAirport.Item2).findAirport(closestAirport.Item1);
+                    airport = new BGLFile(((App)Application.Current).registryPath, closestAirport.Item2).
+                                          findAirport(closestAirport.Item1);
                     TaxiwayPath.Point parkingPath = null;
                     // Search closest parking point, i.e. user within radius
                     try
@@ -402,7 +413,7 @@ namespace Pushback_Utility.SimConnectInterface
         /// <summary>
         /// Callback for events (Sim Start and alike)
         /// </summary>
-        private void simconnect_OnRecvEvent(SimConnect sender, SIMCONNECT_RECV_EVENT data)
+        private void onRecvEvent(SimConnect sender, SIMCONNECT_RECV_EVENT data)
         {
             switch ((EVENTS)data.uEventID)
             {
@@ -423,7 +434,6 @@ namespace Pushback_Utility.SimConnectInterface
                         simconnect.RequestDataOnSimObject(REQUESTS.userPositionOnStart, DATA_DEFINITIONS.positionReport, 
                                                           SimConnect.SIMCONNECT_OBJECT_ID_USER, 
                                                           SIMCONNECT_PERIOD.ONCE, 0, 0, 0, 0);
-                        simconnect.Text(SIMCONNECT_TEXT_TYPE.MENU, 0, null, "SimConnect Text Menu\0Choose which item:\0Item #1\0Item #2\0Item #3\0Item #4\0Item #5\0");
                     }
                     break;
                 default:

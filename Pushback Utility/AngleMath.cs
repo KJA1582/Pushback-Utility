@@ -25,7 +25,8 @@ static class AngleMath
     public static double bearingDegrees(bool inDegrees, GeoCoordinate start, GeoCoordinate end)
     {
         var dLon = Radians(end.Longitude - start.Longitude);
-        var dPhi = Math.Log(Math.Tan(Radians(end.Latitude) / 2 + Math.PI / 4) / Math.Tan(Radians(start.Latitude) / 2 + Math.PI / 4));
+        var dPhi = Math.Log(Math.Tan(Radians(end.Latitude) / 2 + Math.PI / 4) / 
+                   Math.Tan(Radians(start.Latitude) / 2 + Math.PI / 4));
         if (Math.Abs(dLon) > Math.PI)
             dLon = dLon > 0 ? -(2 * Math.PI - dLon) : (2 * Math.PI + dLon);
         if (inDegrees)

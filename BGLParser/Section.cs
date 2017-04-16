@@ -24,7 +24,8 @@ namespace BGLParser
         /// <param name="subsectionOffset"></param>
         /// <param name="totalSubsectionSize"></param>
         /// <param name="file"></param>
-        public Section(UInt32 type, UInt32 sizeValue, UInt32 numberOfSubsections, UInt32 subsectionOffset, UInt32 totalSubsectionSize, byte[] file)
+        public Section(UInt32 type, UInt32 sizeValue, UInt32 numberOfSubsections, UInt32 subsectionOffset, 
+                       UInt32 totalSubsectionSize, byte[] file)
         {
             this.type = type;
             this.sizeValue = sizeValue;

@@ -6,6 +6,9 @@ using System.Runtime.InteropServices;
 using System.Windows;
 using System.Device.Location;
 using System.Collections.Generic;
+using System.IO;
+using System.Xml.Serialization;
+using System.Linq;
 
 namespace Pushback_Configurator.SimConnectInterface
 {
@@ -35,6 +38,7 @@ namespace Pushback_Configurator.SimConnectInterface
         private double altitude = 0;
         private int currentTempMarkerIndex = 0;
         private Airport airport;
+        private Tuple<string, string> closestAirport;
 
         private enum DATA_DEFINITIONS
         {
@@ -221,14 +225,19 @@ namespace Pushback_Configurator.SimConnectInterface
         /// </summary>
         public void finish()
         {
-            main.display.Content = "";
             foreach (TaxiwayPoint.Point point in setMarkers)
-            {
-                main.display.Content += point.location.ToString() + "\n";
                 tempPoints = null;
-            }
             foreach (uint id in setMarkerIDs)
                 simconnect.AIRemoveObject(id, REQUESTS.markerDelete);
+            StreamWriter doc = File.CreateText("airports\\" + closestAirport.Item2.Split('\\').Last() + closestAirport.Item1 + 
+                                               parking.type.ToString() + parking.name.ToString() + main.direction.Text + ".xml");
+            XmlSerializer xsSubmit = new XmlSerializer(typeof(List<GeoCoordinate>));
+            List<GeoCoordinate> temp = new List<GeoCoordinate>();
+            foreach (TaxiwayPoint.Point point in setMarkers)
+            {
+                temp.Add(point.location);
+            }
+            xsSubmit.Serialize(doc, temp);
         }
         
         /// <summary>
@@ -285,7 +294,7 @@ namespace Pushback_Configurator.SimConnectInterface
                     GeoCoordinate userPosition = new GeoCoordinate(((positionReport)data.dwData[0]).latitude,
                                                               ((positionReport)data.dwData[0]).longitude);
                     altitude = ((positionReport)data.dwData[0]).altitude * 3.28084;
-                    Tuple<string, string> closestAirport = main.activeFiles.getClosestAirportTo(userPosition);
+                    closestAirport = main.activeFiles.getClosestAirportTo(userPosition);
                     airport = new BGLFile(((App)Application.Current).registryPath, closestAirport.Item2).
                                       findAirport(closestAirport.Item1);
                     parking = airport.parkings.findClosestTo(userPosition);

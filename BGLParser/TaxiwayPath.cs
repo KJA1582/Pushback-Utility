@@ -40,7 +40,8 @@ namespace BGLParser
             public UInt32 unknown { private set; get; } = 0;
 
 
-            public Point(UInt16 startPointIndex, UInt16 compoundEndPoint, byte compoundType, byte taxiNameIndex, byte edges, byte surface, float width, float weightLimit, UInt32 unknown)
+            public Point(UInt16 startPointIndex, UInt16 compoundEndPoint, byte compoundType, byte taxiNameIndex, byte edges, 
+                         byte surface, float width, float weightLimit, UInt32 unknown)
             {
                 this.startPointIndex = startPointIndex;
                 endPointIndex = (UInt16)(compoundEndPoint   & 0b0000111111111111);
