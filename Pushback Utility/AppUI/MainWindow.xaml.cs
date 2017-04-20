@@ -92,10 +92,5 @@ namespace Pushback_Utility.AppUI
                 sim.changeConnection(handle, WM_USER_SIMCONNECT);
             }
         }
-
-        private void Button_Click_1(object sender, RoutedEventArgs e)
-        {
-            sim.selected();
-        }
     }
 }

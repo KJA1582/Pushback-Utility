@@ -8,7 +8,5 @@
         ResizeMode="CanMinimize">
     <Grid>
         <Button Content="Connect to FS" VerticalAlignment="Top" Margin="10,10,0,0" Click="Button_Click" HorizontalAlignment="Left" Width="120"/>
-        <ComboBox x:Name="directions" HorizontalAlignment="Left" Margin="10,35,0,0" VerticalAlignment="Top" Width="210"/>
-        <Button Content="Select direction" HorizontalAlignment="Left" Margin="135,10,0,0" VerticalAlignment="Top" Width="85" Click="Button_Click_1"/>
     </Grid>
 </Window>

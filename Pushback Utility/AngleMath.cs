@@ -13,6 +13,11 @@ static class AngleMath
         return radians * 180 / Math.PI;
     }
 
+    public static double reciprocal(double heading)
+    {
+        return (heading + 180) % 360;
+    }
+
     /// <summary>
     /// Bearing from start to end, parameters in degrees
     /// </summary>

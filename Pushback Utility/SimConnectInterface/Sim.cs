@@ -5,6 +5,10 @@ using System;
 using System.Device.Location;
 using System.Runtime.InteropServices;
 using System.Windows;
+using System.Linq;
+using System.IO;
+using System.Collections.Generic;
+using System.Xml.Serialization;
 
 namespace Pushback_Utility.SimConnectInterface
 {
@@ -23,32 +27,11 @@ namespace Pushback_Utility.SimConnectInterface
         private bool simActive = false;
         private bool pushbackApproved = false;
         private bool pushbackActive = false;
-        private bool pushbackInTurn = false;
-        private bool pushbackInFinal = false;
-        private bool pushbackDone = false;
-        private bool pushbackRight = true;
-        private bool initialRight = true;
-
-        private double headingDeltaPushback = 0;
-        private double headingDeltaToPushbackEnd = 0;
-        private double targetHeading = 0;
-        private double targetHeadingInitial = 0;
-        private double turnEndDistance = 10; // MUST BE SET BY USER
-
-        private Airport airport = null;
-
-        private TaxiwayPoint.Point pushbackEnd = null;
-        private TaxiwayParking.Point parking = null;
 
         private ActiveFiles activeFiles = null;
 
-        private positionReport userPos;
-
-        // To change turn radius, adjust following values. See GeoGebra file for more information and visualization
-        private double turnDiameter = 120 / Math.PI; // FOR METERS
-        private double rotationalMultiplier = 1;
-        private double baseForwardSpeed = 1;
-        private double slowDownFactor = 1.015;
+        private List<string> files = new List<string>();
+        private List<GeoCoordinate> pushbackPath = new List<GeoCoordinate>();
 
         // SimConnect object
         private SimConnect simconnect = null;
@@ -76,6 +59,7 @@ namespace Pushback_Utility.SimConnectInterface
             simStart,
             simStop,
             eventShiftP,
+            menu,
         };
 
         private enum INPUT_GROUPS
@@ -104,7 +88,6 @@ namespace Pushback_Utility.SimConnectInterface
         {
             public double latitude;
             public double longitude;
-            public double altidude;
             public double heading;
         };
 
@@ -178,14 +161,12 @@ namespace Pushback_Utility.SimConnectInterface
                                                    SIMCONNECT_DATATYPE.FLOAT64, 0.0f, SimConnect.SIMCONNECT_UNUSED);
                     simconnect.AddToDataDefinition(DATA_DEFINITIONS.positionReport, "PLANE LONGITUDE", "degrees", 
                                                    SIMCONNECT_DATATYPE.FLOAT64, 0.0f, SimConnect.SIMCONNECT_UNUSED);
-                    simconnect.AddToDataDefinition(DATA_DEFINITIONS.positionReport, "PLANE ALTITUDE", "meters", 
-                                                   SIMCONNECT_DATATYPE.FLOAT64, 0.0f, SimConnect.SIMCONNECT_UNUSED);
                     simconnect.AddToDataDefinition(DATA_DEFINITIONS.positionReport, "PLANE HEADING DEGREES TRUE", "degrees", 
                                                    SIMCONNECT_DATATYPE.FLOAT64, 0.0f, SimConnect.SIMCONNECT_UNUSED);
                     simconnect.AddToDataDefinition(DATA_DEFINITIONS.userVelocityZ, "VELOCITY BODY Z", "meters/second", 
                                                    SIMCONNECT_DATATYPE.FLOAT64, 0.0f, SimConnect.SIMCONNECT_UNUSED);
-                    simconnect.AddToDataDefinition(DATA_DEFINITIONS.userVelocityRotY, "ROTATION VELOCITY BODY Y", 
-                                                   "degrees per second", SIMCONNECT_DATATYPE.FLOAT64, 0.0f, 
+                    simconnect.AddToDataDefinition(DATA_DEFINITIONS.userVelocityRotY, "PLANE HEADING DEGREES TRUE", 
+                                                   "degrees", SIMCONNECT_DATATYPE.FLOAT64, 0.0f, 
                                                    SimConnect.SIMCONNECT_UNUSED);
                     // IMPORTANT: register it with the simconnect managed wrapper marshaller
                     // if you skip this step, you will only receive a uint in the .dwData field.
@@ -227,48 +208,6 @@ namespace Pushback_Utility.SimConnectInterface
             }
         }
 
-        public void selected()
-        {
-            TaxiwayPoint.Point selected = null; 
-            // Get point to push back to
-            selected = airport.points.findByIndex(((Tuple<TaxiwayPath.Point, int>)main.directions.SelectedItem).Item2);
-            double bearingPushbackEndSelected = AngleMath.bearingDegrees(true, pushbackEnd.location, selected.location);
-            double bearingPushbackEndParking = AngleMath.bearingDegrees(true, pushbackEnd.location, parking.location);
-            double recpirocalHeading = 0;
-
-            if (bearingPushbackEndSelected < 180)
-                targetHeading += 180 + bearingPushbackEndSelected;
-            else
-                targetHeading = bearingPushbackEndSelected - 180;
-            targetHeadingInitial = bearingPushbackEndParking;
-
-            if (bearingPushbackEndParking < 180)
-                recpirocalHeading += 180 + bearingPushbackEndParking;
-            else
-                recpirocalHeading = bearingPushbackEndParking - 180;
-
-            if (recpirocalHeading > 180 && ((recpirocalHeading < targetHeading && targetHeading < 360)
-                || (0 < targetHeading && targetHeading < bearingPushbackEndParking)))
-                pushbackRight = false;
-            else if (recpirocalHeading < targetHeading && targetHeading < bearingPushbackEndParking)
-                pushbackRight = false;
-
-            if (recpirocalHeading > 180 && recpirocalHeading < targetHeadingInitial && targetHeadingInitial < 360
-                && 0 < targetHeadingInitial && targetHeadingInitial < bearingPushbackEndParking)
-                initialRight = false;
-            else if (recpirocalHeading < targetHeadingInitial && targetHeadingInitial < bearingPushbackEndParking)
-                initialRight = false;
-
-            headingDeltaPushback = Math.Abs(headingDeltaPushback - targetHeading);
-            if (headingDeltaPushback > 180)
-                headingDeltaPushback = 360 - headingDeltaPushback;
-            headingDeltaToPushbackEnd = Math.Abs(userPos.heading - bearingPushbackEndParking);
-            if (headingDeltaToPushbackEnd > 180)
-                headingDeltaToPushbackEnd = 360 - headingDeltaToPushbackEnd;
-
-            pushbackActive = true;
-        }
-
         /// <summary>
         /// Closes the connection to the sim
         /// </summary>
@@ -304,107 +243,83 @@ namespace Pushback_Utility.SimConnectInterface
             switch ((REQUESTS)data.dwRequestID)
             {
                 case REQUESTS.pushbackStartCondition:
-                    if (simActive && !pushbackActive)
                     {
-                        pBrake = Convert.ToBoolean(((pushbackStartCondition)data.dwData[0]).parkingBrakeSet);
-                        bool onGround = Convert.ToBoolean(((pushbackStartCondition)data.dwData[0]).onGround);
-                        pushbackApproved = pBrake && onGround;
-                    }
-                    if (simActive)
-                    {
-                        pBrake = Convert.ToBoolean(((pushbackStartCondition)data.dwData[0]).parkingBrakeSet);
-                        if (!pushbackApproved)
-                            sendText("On ground, parking brake set. Please confirm all conditions met.");
-                        else if (pushbackApproved && !pushbackActive)
-                            sendText("Shift+P to start pushback");
-                        else if (pushbackApproved && pushbackActive && pBrake && !pushbackDone)
-                            sendText("Release parking brake");
-                        else if (pushbackApproved && pushbackActive && !pBrake && !pushbackDone)
-                            simconnect.RequestDataOnSimObject(REQUESTS.userPositionDuringPushback, 
-                                                              DATA_DEFINITIONS.positionReport, 
-                                                              SimConnect.SIMCONNECT_OBJECT_ID_USER, 
-                                                              SIMCONNECT_PERIOD.ONCE, 0, 0, 0, 0);
-                        else if (pushbackApproved && pushbackActive && !pBrake && pushbackDone)
+                        if (simActive && !pushbackActive)
                         {
-                            sendText("Pushback complete, set parking brake");
-                            adjust hold = new adjust();
-                            hold.value = 0;
-                            simconnect.SetDataOnSimObject(DATA_DEFINITIONS.userVelocityZ, 
-                                                          SimConnect.SIMCONNECT_OBJECT_ID_USER, 0, hold);
+                            pBrake = Convert.ToBoolean(((pushbackStartCondition)data.dwData[0]).parkingBrakeSet);
+                            bool onGround = Convert.ToBoolean(((pushbackStartCondition)data.dwData[0]).onGround);
+                            pushbackApproved = pBrake && onGround;
                         }
-                        else if (pushbackApproved && pushbackActive && pBrake && pushbackDone)
+                        if (simActive)
                         {
-                            pushbackApproved = pushbackActive = pushbackInTurn = pushbackInFinal = pushbackDone = false;
-                            headingDeltaPushback = 0;
+                            pBrake = Convert.ToBoolean(((pushbackStartCondition)data.dwData[0]).parkingBrakeSet);
+                            if (!pushbackApproved)
+                                sendText("Please confirm on ground and parking brake set.");
+                            else
+                                simconnect.RequestDataOnSimObject(REQUESTS.userPositionOnStart, DATA_DEFINITIONS.positionReport,
+                                                                  SimConnect.SIMCONNECT_OBJECT_ID_USER, SIMCONNECT_PERIOD.ONCE,
+                                                                  0, 0, 0, 0);
                         }
+                        break;
                     }
-                    break;
                 case REQUESTS.userPositionOnStart:
-                    userPos = ((positionReport)data.dwData[0]);
-                    headingDeltaPushback = ((positionReport)data.dwData[0]).heading;
-                    main.directions.ItemsSource = null;
-                    GeoCoordinate userPosition = new GeoCoordinate(((positionReport)data.dwData[0]).latitude, 
-                                                              ((positionReport)data.dwData[0]).longitude);
-                    Tuple<string, string> closestAirport = activeFiles.getClosestAirportTo(userPosition);
-                    airport = new BGLFile(((App)Application.Current).registryPath, closestAirport.Item2).
-                                          findAirport(closestAirport.Item1);
-                    TaxiwayPath.Point parkingPath = null;
-                    // Search closest parking point, i.e. user within radius
-                    try
                     {
-                        parking = airport.parkings.findClosestTo(userPosition);
-                        // Get parking path which references the parking point ID
-                        parkingPath = airport.paths.getBy(TaxiwayPath.TYPE.PARKING, (UInt16)parking.index);
-                        // Get point to push back to
-                        pushbackEnd = airport.points.findByIndex(parkingPath.startPointIndex);
-                        // Get paths which references the pushback end point as start or end and is not of parking type
-                        main.directions.ItemsSource = airport.paths.getBy(true, TaxiwayPath.TYPE.PARKING, 
-                                                                          parkingPath.startPointIndex);  
+                        GeoCoordinate userPosition = new GeoCoordinate(((positionReport)data.dwData[0]).latitude,
+                                                                       ((positionReport)data.dwData[0]).longitude);
+                        Tuple<string, string> closestAirport = activeFiles.getClosestAirportTo(userPosition);
+                        Airport airport = new BGLFile(((App)Application.Current).registryPath, closestAirport.Item2).
+                                              findAirport(closestAirport.Item1);
+                        // Search closest parking point, i.e. user within radius
+                        TaxiwayParking.Point parking = airport.parkings.findClosestTo(userPosition);
+                        // Get files
+                        string filePrefix = closestAirport.Item2.Split('\\').Last() + closestAirport.Item1 +
+                                            parking.type.ToString() + parking.name.ToString() + parking.number.ToString();
+                        string[] filesInDir = Directory.GetFiles("airports");
+                        string menu = "Pushback\0Choose diection:\0";
+                        foreach (string file in filesInDir)
+                            if (file.Contains(filePrefix))
+                            {
+                                files.Add(file);
+                                menu += file.Replace("airports\\" + filePrefix, "").Replace(".xml", "") + "\0";
+                            }
+                        menu += "Cancel\0";
+                        simconnect.Text(SIMCONNECT_TEXT_TYPE.MENU, 0, EVENTS.menu, menu);
+                        break;
                     }
-                    catch (Exception e)
-                    {
-                        MessageBox.Show(e.ToString());
-                    }
-                    break;
                 case REQUESTS.userPositionDuringPushback:
-                    positionReport user = (positionReport)data.dwData[0];
-                    adjust adjSpeed = new adjust();
-                    adjust adjRota = new adjust();
-                    double untilTurn = AngleMath.distanceUntilTurn(headingDeltaPushback, turnDiameter);
-                    userPosition = new GeoCoordinate(user.latitude, user.longitude);
-                    double distance = userPosition.GetDistanceTo(pushbackEnd.location);
-                    if (!pushbackInTurn)
-                        sendText(((int)Math.Round(distance - untilTurn)).ToString() + " m remaining until turning begins");
-                    if (targetHeading - 0.5 < user.heading && user.heading < targetHeading + 0.5)
-                        pushbackInFinal = true;
-                    if (pushbackInFinal && distance > untilTurn + turnEndDistance)
-                        pushbackDone = true;
-                    else
                     {
-                        adjSpeed.value = -baseForwardSpeed;
-                        if (!pushbackInTurn &&
-                            !(targetHeadingInitial - 0.5 < user.heading && user.heading < targetHeadingInitial + 0.5))
+                        if (pushbackPath.Count > 0)
                         {
-                            if (initialRight)
-                                adjRota.value = 0.1;
-                            else
-                                adjRota.value = -0.1;
+                            GeoCoordinate userPosition = new GeoCoordinate(((positionReport)data.dwData[0]).latitude,
+                                                                           ((positionReport)data.dwData[0]).longitude);
+                            double reciprocalBearingToPoint = AngleMath.reciprocal(
+                                                              AngleMath.bearingDegrees(true, userPosition,
+                                                                                       pushbackPath.First()));
+                            double distanceToPoint = userPosition.GetDistanceTo(pushbackPath.First());
+                            sendText(distanceToPoint.ToString() + " ; " + reciprocalBearingToPoint.ToString() + " ; " +
+                                    ((positionReport)data.dwData[0]).heading);
+                            adjust positionAdjustment = new adjust();
+                            positionAdjustment.value = reciprocalBearingToPoint;
+                            simconnect.SetDataOnSimObject(DATA_DEFINITIONS.userVelocityRotY,
+                                                          SimConnect.SIMCONNECT_OBJECT_ID_USER, 0, positionAdjustment);
+                            if (distanceToPoint > 0.2)
+                            {
+                                positionAdjustment.value = -2.5;
+                                simconnect.SetDataOnSimObject(DATA_DEFINITIONS.userVelocityZ,
+                                                              SimConnect.SIMCONNECT_OBJECT_ID_USER, 0, positionAdjustment);
+                                break;
+                            } else
+                            {
+                                pushbackPath.RemoveAt(0);
+                                break;
+                            }  
                         }
-                        if (!pushbackInFinal && (pushbackInTurn || distance - untilTurn < 1))
-                        {
-                            pushbackInTurn = true;
-                            adjSpeed.value /= slowDownFactor;
-                            if (pushbackRight)
-                                adjRota.value = rotationalMultiplier;
-                            else
-                                adjRota.value = -rotationalMultiplier;
-                        }
-                        simconnect.SetDataOnSimObject(DATA_DEFINITIONS.userVelocityRotY,
-                                                      SimConnect.SIMCONNECT_OBJECT_ID_USER, 0, adjRota);
-                        simconnect.SetDataOnSimObject(DATA_DEFINITIONS.userVelocityZ,
-                                                      SimConnect.SIMCONNECT_OBJECT_ID_USER, 0, adjSpeed);
+                        simconnect.RequestDataOnSimObject(REQUESTS.userPositionDuringPushback,
+                                                              DATA_DEFINITIONS.positionReport,
+                                                              SimConnect.SIMCONNECT_OBJECT_ID_USER,
+                                                              SIMCONNECT_PERIOD.NEVER, 0, 0, 0, 0);
+                        break;
                     }
-                    break;
                 default:
                     break;
             }
@@ -418,22 +333,32 @@ namespace Pushback_Utility.SimConnectInterface
             switch ((EVENTS)data.uEventID)
             {
                 case EVENTS.simStart:
-                    simconnect.RequestDataOnSimObject(REQUESTS.pushbackStartCondition, DATA_DEFINITIONS.pushbackStartCondition, 
-                                                      SimConnect.SIMCONNECT_OBJECT_ID_USER, 
-                                                      SIMCONNECT_PERIOD.SIM_FRAME, 0, 0, 0, 0);
                     simActive = true;
                     break;
                 case EVENTS.simStop:
-                    simconnect.RequestDataOnSimObject(REQUESTS.pushbackStartCondition, DATA_DEFINITIONS.pushbackStartCondition, 
-                                                      SimConnect.SIMCONNECT_OBJECT_ID_USER, SIMCONNECT_PERIOD.NEVER, 0, 0, 0, 0);
                     simActive = false;
                     break;
                 case EVENTS.eventShiftP:
-                    if (pushbackApproved && !pushbackActive)
+                    if (simActive)
+                        simconnect.RequestDataOnSimObject(REQUESTS.pushbackStartCondition,
+                                                          DATA_DEFINITIONS.pushbackStartCondition,
+                                                          SimConnect.SIMCONNECT_OBJECT_ID_USER,
+                                                          SIMCONNECT_PERIOD.ONCE, 0, 0, 0, 0);  
+                    break;
+                case EVENTS.menu:
+                    if (((int)data.dwData) < 9)
                     {
-                        simconnect.RequestDataOnSimObject(REQUESTS.userPositionOnStart, DATA_DEFINITIONS.positionReport, 
-                                                          SimConnect.SIMCONNECT_OBJECT_ID_USER, 
-                                                          SIMCONNECT_PERIOD.ONCE, 0, 0, 0, 0);
+                        try
+                        {
+                            StreamReader doc = File.OpenText(files[(int)data.dwData]);
+                            XmlSerializer xsSubmit = new XmlSerializer(typeof(List<GeoCoordinate>));
+                            pushbackPath = (List<GeoCoordinate>)xsSubmit.Deserialize(doc);
+                            simconnect.RequestDataOnSimObject(REQUESTS.userPositionDuringPushback,
+                                                              DATA_DEFINITIONS.positionReport,
+                                                              SimConnect.SIMCONNECT_OBJECT_ID_USER,
+                                                              SIMCONNECT_PERIOD.SIM_FRAME, 0, 0, 0, 0);
+                        }
+                        catch (ArgumentOutOfRangeException) { }
                     }
                     break;
                 default:
