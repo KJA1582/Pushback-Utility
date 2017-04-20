@@ -120,9 +120,24 @@ namespace Pushback_Configurator.AppUI
             sim.finish();
         }
 
+        /// <summary>
+        /// Cancels customization
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
         private void cancel(object sender, RoutedEventArgs e)
         {
             sim.cancel();
+        }
+
+        /// <summary>
+        /// Displays selected file
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        private void Button_Click(object sender, RoutedEventArgs e)
+        {
+            sim.display();
         }
     }
 }

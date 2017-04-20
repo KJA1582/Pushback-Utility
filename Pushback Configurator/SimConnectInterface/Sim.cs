@@ -36,6 +36,7 @@ namespace Pushback_Configurator.SimConnectInterface
         private List<Tuple<TaxiwayPath.Point, int>> tempPoints;// = new List<Tuple<TaxiwayPath.Point, int>>();
         private uint tempMarkerID;
         private List<uint> setMarkerIDs = new List<uint>();
+        private List<uint> displayMarkerIDs = new List<uint>();
         private double altitude = 0;
         private int currentTempMarkerIndex = 0;
         private Airport airport;
@@ -51,6 +52,7 @@ namespace Pushback_Configurator.SimConnectInterface
             userPosition,
             markerSet,
             markerTemp,
+            markerDisplay,
             markerDelete,
         };
 
@@ -180,7 +182,7 @@ namespace Pushback_Configurator.SimConnectInterface
                 init.Latitude = point.location.Latitude;
                 init.Longitude = point.location.Longitude;
                 init.Altitude = altitude;
-                simconnect.AICreateSimulatedObject("AC_Unit_sm", init, REQUESTS.markerSet);
+                simconnect.AICreateSimulatedObject("set", init, REQUESTS.markerSet);
                 tempPoints = airport.paths.getBy(true, TaxiwayPath.TYPE.PARKING, (UInt16)point.index);
             }
         }
@@ -211,7 +213,7 @@ namespace Pushback_Configurator.SimConnectInterface
                 init.Latitude = airport.points.findByIndex(tempPoints[currentTempMarkerIndex].Item2).location.Latitude;
                 init.Longitude = airport.points.findByIndex(tempPoints[currentTempMarkerIndex].Item2).location.Longitude;
                 init.Altitude = altitude;
-                simconnect.AICreateSimulatedObject("Propane_Tank_sm", init, REQUESTS.markerTemp);
+                simconnect.AICreateSimulatedObject("temporary", init, REQUESTS.markerTemp);
             }
         }
 
@@ -223,8 +225,8 @@ namespace Pushback_Configurator.SimConnectInterface
             if (simActive && customizationActive)
             {
                 string filePath = "airports\\" + closestAirport.Item2.Split('\\').Last() + closestAirport.Item1 +
-                                                   parking.type.ToString() + parking.name.ToString() + parking.number.ToString() +
-                                                   main.direction.Text + ".xml";
+                                  parking.type.ToString() + parking.name.ToString() + parking.number.ToString() +
+                                  main.direction.Text + ".xml";
                 if (main.overwrite.SelectedItem != null)
                     filePath = (string)main.overwrite.SelectedItem;
                 StreamWriter doc = File.CreateText(filePath);
@@ -251,11 +253,40 @@ namespace Pushback_Configurator.SimConnectInterface
             tempPoints = null;
             foreach (uint id in setMarkerIDs)
                 simconnect.AIRemoveObject(id, REQUESTS.markerDelete);
+            foreach (uint id in displayMarkerIDs)
+                simconnect.AIRemoveObject(id, REQUESTS.markerDelete);
             simconnect.AIRemoveObject(tempMarkerID, REQUESTS.markerDelete);
             tempMarkerID = 0;
             setMarkerIDs.Clear();
+            displayMarkerIDs.Clear();
             tempPoints = null;
+            setMarkers.Clear();
             customizationActive = false;
+        }
+
+        /// <summary>
+        /// Displays overwrite
+        /// </summary>
+        public void display()
+        {
+            if (simActive && main.overwrite.SelectedItem != null)
+            {
+                foreach (uint id in displayMarkerIDs)
+                    simconnect.AIRemoveObject(id, REQUESTS.markerDelete);
+                displayMarkerIDs.Clear();
+                StreamReader doc = File.OpenText((string)main.overwrite.SelectedItem);
+                XmlSerializer xsSubmit = new XmlSerializer(typeof(List<GeoCoordinate>));
+                List<GeoCoordinate> temp = new List<GeoCoordinate>();
+                temp = (List<GeoCoordinate>)xsSubmit.Deserialize(doc);
+                SIMCONNECT_DATA_INITPOSITION init = new SIMCONNECT_DATA_INITPOSITION();
+                init.Altitude = altitude;
+                foreach (GeoCoordinate pos in temp)
+                {
+                    init.Latitude = pos.Latitude;
+                    init.Longitude = pos.Longitude;
+                    simconnect.AICreateSimulatedObject("display", init, REQUESTS.markerDisplay);
+                }
+            }
         }
         
         /// <summary>
@@ -337,7 +368,7 @@ namespace Pushback_Configurator.SimConnectInterface
                     init.Latitude = airport.points.findByIndex(parkingPath.startPointIndex).location.Latitude;
                     init.Longitude = airport.points.findByIndex(parkingPath.startPointIndex).location.Longitude;
                     init.Altitude = altitude;
-                    simconnect.AICreateSimulatedObject("AC_Unit_sm", init, REQUESTS.markerSet);
+                    simconnect.AICreateSimulatedObject("set", init, REQUESTS.markerSet);
                     tempPoints = airport.paths.getBy(true, TaxiwayPath.TYPE.PARKING, parkingPath.startPointIndex);
                     // Enable
                     customizationActive = true;
@@ -361,6 +392,9 @@ namespace Pushback_Configurator.SimConnectInterface
                     break;
                 case REQUESTS.markerTemp:
                     tempMarkerID = data.dwObjectID;
+                    break;
+                case REQUESTS.markerDisplay:
+                    displayMarkerIDs.Add(data.dwObjectID);
                     break;
                 default:
                     break;
