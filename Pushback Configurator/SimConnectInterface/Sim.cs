@@ -63,14 +63,6 @@ namespace Pushback_Configurator.SimConnectInterface
             text,
         };
 
-        private enum INPUT_GROUPS
-        {
-        };
-
-        private enum GROUPS
-        {
-        };
-
         // this is how you declare a data structure so that
         // simconnect knows how to fill it/read it.
 

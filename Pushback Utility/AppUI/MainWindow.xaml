@@ -7,6 +7,6 @@
         Title="MainWindow" Height="110.629" Width="236.335"
         ResizeMode="CanMinimize">
     <Grid>
-        <Button Content="Connect to FS" VerticalAlignment="Top" Margin="10,10,0,0" Click="Button_Click" HorizontalAlignment="Left" Width="120"/>
+        <Button x:Name="button" Content="Connect to FS" VerticalAlignment="Top" Margin="10,10,0,0" Click="Button_Click" HorizontalAlignment="Left" Width="120"/>
     </Grid>
 </Window>

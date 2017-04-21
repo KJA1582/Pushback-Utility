@@ -89,6 +89,7 @@ namespace Pushback_Utility.SimConnectInterface
             public double latitude;
             public double longitude;
             public double heading;
+            public double parkingBrake;
         };
 
         [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Ansi, Pack = 1)]
@@ -163,6 +164,8 @@ namespace Pushback_Utility.SimConnectInterface
                                                    SIMCONNECT_DATATYPE.FLOAT64, 0.0f, SimConnect.SIMCONNECT_UNUSED);
                     simconnect.AddToDataDefinition(DATA_DEFINITIONS.positionReport, "PLANE HEADING DEGREES TRUE", "degrees", 
                                                    SIMCONNECT_DATATYPE.FLOAT64, 0.0f, SimConnect.SIMCONNECT_UNUSED);
+                    simconnect.AddToDataDefinition(DATA_DEFINITIONS.positionReport, "BRAKE PARKING INDICATOR", null,
+                                                   SIMCONNECT_DATATYPE.FLOAT64, 0.0f, SimConnect.SIMCONNECT_UNUSED);
                     simconnect.AddToDataDefinition(DATA_DEFINITIONS.userVelocityZ, "VELOCITY BODY Z", "meters/second", 
                                                    SIMCONNECT_DATATYPE.FLOAT64, 0.0f, SimConnect.SIMCONNECT_UNUSED);
                     simconnect.AddToDataDefinition(DATA_DEFINITIONS.userVelocityRotY, "PLANE HEADING DEGREES TRUE", 
@@ -181,6 +184,7 @@ namespace Pushback_Utility.SimConnectInterface
                 {
                     // A connection to the SimConnect server could not be established
                     MessageBox.Show("Exception: " + ex.Message, "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                    closeConnection();
                 }
             }
         }
@@ -218,6 +222,7 @@ namespace Pushback_Utility.SimConnectInterface
                 activeFiles = null;
                 simconnect.Dispose();
                 simconnect = null;
+                main.button.Content = "Connect to FS";
                 connected = false;
             }
         }
@@ -270,25 +275,34 @@ namespace Pushback_Utility.SimConnectInterface
                         Airport airport = new BGLFile(((App)Application.Current).registryPath, closestAirport.Item2).
                                               findAirport(closestAirport.Item1);
                         // Search closest parking point, i.e. user within radius
-                        TaxiwayParking.Point parking = airport.parkings.findClosestTo(userPosition);
-                        // Get files
-                        string filePrefix = closestAirport.Item2.Split('\\').Last() + closestAirport.Item1 +
-                                            parking.type.ToString() + parking.name.ToString() + parking.number.ToString();
-                        string[] filesInDir = Directory.GetFiles("airports");
-                        string menu = "Pushback\0Choose diection:\0";
-                        foreach (string file in filesInDir)
-                            if (file.Contains(filePrefix))
-                            {
-                                files.Add(file);
-                                menu += file.Replace("airports\\" + filePrefix, "").Replace(".xml", "") + "\0";
-                            }
-                        menu += "Cancel\0";
-                        simconnect.Text(SIMCONNECT_TEXT_TYPE.MENU, 0, EVENTS.menu, menu);
+                        try
+                        {
+                            TaxiwayParking.Point parking = airport.parkings.findClosestTo(userPosition);
+                            // Get files
+                            string filePrefix = closestAirport.Item2.Split('\\').Last() + closestAirport.Item1 +
+                                                parking.type.ToString() + parking.name.ToString() + parking.number.ToString();
+                            string[] filesInDir = Directory.GetFiles("airports");
+                            string menu = "Pushback\0Choose diection:\0";
+                            foreach (string file in filesInDir)
+                                if (file.Contains(filePrefix))
+                                {
+                                    files.Add(file);
+                                    menu += file.Replace("airports\\" + filePrefix, "").Replace(".xml", "") + "\0";
+                                }
+                            menu += "Cancel\0";
+                            simconnect.Text(SIMCONNECT_TEXT_TYPE.MENU, 0, EVENTS.menu, menu);
+                        }
+                        catch (Exception ex)
+                        {
+                            MessageBox.Show("Exception: " + ex.Message, "Error", MessageBoxButton.OK, MessageBoxImage.Error);
+                        }
                         break;
                     }
                 case REQUESTS.userPositionDuringPushback:
                     {
-                        if (pushbackPath.Count > 0)
+                        if (Convert.ToBoolean(((positionReport)data.dwData[0]).parkingBrake) && pushbackPath.Count > 0)
+                            sendText("Release parking brake.");
+                        else if (!Convert.ToBoolean(((positionReport)data.dwData[0]).parkingBrake) && pushbackPath.Count > 0)
                         {
                             GeoCoordinate userPosition = new GeoCoordinate(((positionReport)data.dwData[0]).latitude,
                                                                            ((positionReport)data.dwData[0]).longitude);
@@ -308,13 +322,17 @@ namespace Pushback_Utility.SimConnectInterface
                                 simconnect.SetDataOnSimObject(DATA_DEFINITIONS.userVelocityZ,
                                                               SimConnect.SIMCONNECT_OBJECT_ID_USER, 0, positionAdjustment);
                                 break;
-                            } else
+                            }
+                            else
                             {
                                 pushbackPath.RemoveAt(0);
                                 break;
-                            }  
+                            }
                         }
-                        simconnect.RequestDataOnSimObject(REQUESTS.userPositionDuringPushback,
+                        else if (!Convert.ToBoolean(((positionReport)data.dwData[0]).parkingBrake) && pushbackPath.Count == 0)
+                            sendText("Set parking brake.");
+                        else if (Convert.ToBoolean(((positionReport)data.dwData[0]).parkingBrake))
+                            simconnect.RequestDataOnSimObject(REQUESTS.userPositionDuringPushback,
                                                               DATA_DEFINITIONS.positionReport,
                                                               SimConnect.SIMCONNECT_OBJECT_ID_USER,
                                                               SIMCONNECT_PERIOD.NEVER, 0, 0, 0, 0);
