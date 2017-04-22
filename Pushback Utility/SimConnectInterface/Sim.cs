@@ -15,6 +15,12 @@ namespace Pushback_Utility.SimConnectInterface
     public class Sim
     {
         // ------------------------------------------------------------------------------
+        // Constants
+        // ------------------------------------------------------------------------------
+
+        private const double turnRadius = 60 / Math.PI;
+
+        // ------------------------------------------------------------------------------
         // PROPERTIES
         // ------------------------------------------------------------------------------
 
@@ -27,6 +33,7 @@ namespace Pushback_Utility.SimConnectInterface
         private bool simActive = false;
         private bool pushbackApproved = false;
         private bool pushbackActive = false;
+        private bool pushbackInTurn = false;
 
         private ActiveFiles activeFiles = null;
 
@@ -44,6 +51,7 @@ namespace Pushback_Utility.SimConnectInterface
             positionReport,
             userVelocityZ,
             userVelocityRotY,
+            userHeading,
         }
        
         private enum REQUESTS
@@ -168,15 +176,18 @@ namespace Pushback_Utility.SimConnectInterface
                                                    SIMCONNECT_DATATYPE.FLOAT64, 0.0f, SimConnect.SIMCONNECT_UNUSED);
                     simconnect.AddToDataDefinition(DATA_DEFINITIONS.userVelocityZ, "VELOCITY BODY Z", "meters/second", 
                                                    SIMCONNECT_DATATYPE.FLOAT64, 0.0f, SimConnect.SIMCONNECT_UNUSED);
-                    simconnect.AddToDataDefinition(DATA_DEFINITIONS.userVelocityRotY, "PLANE HEADING DEGREES TRUE", 
-                                                   "degrees", SIMCONNECT_DATATYPE.FLOAT64, 0.0f, 
+                    simconnect.AddToDataDefinition(DATA_DEFINITIONS.userVelocityRotY, "ROTATION VELOCITY BODY Y", 
+                                                   "degrees per second", SIMCONNECT_DATATYPE.FLOAT64, 0.0f, 
                                                    SimConnect.SIMCONNECT_UNUSED);
+                    simconnect.AddToDataDefinition(DATA_DEFINITIONS.userHeading, "PLANE HEADING DEGREES TRUE",
+                                                   "degrees", SIMCONNECT_DATATYPE.FLOAT64, 0.0f, SimConnect.SIMCONNECT_UNUSED);
                     // IMPORTANT: register it with the simconnect managed wrapper marshaller
                     // if you skip this step, you will only receive a uint in the .dwData field.
                     simconnect.RegisterDataDefineStruct<pushbackStartCondition>(DATA_DEFINITIONS.pushbackStartCondition);
                     simconnect.RegisterDataDefineStruct<positionReport>(DATA_DEFINITIONS.positionReport);
                     simconnect.RegisterDataDefineStruct<adjust>(DATA_DEFINITIONS.userVelocityRotY);
                     simconnect.RegisterDataDefineStruct<adjust>(DATA_DEFINITIONS.userVelocityZ);
+                    simconnect.RegisterDataDefineStruct<adjust>(DATA_DEFINITIONS.userHeading);
 
                     connected = true;
                 }
@@ -300,37 +311,107 @@ namespace Pushback_Utility.SimConnectInterface
                     }
                 case REQUESTS.userPositionDuringPushback:
                     {
-                        if (Convert.ToBoolean(((positionReport)data.dwData[0]).parkingBrake) && pushbackPath.Count > 0)
-                            sendText("Release parking brake.");
-                        else if (!Convert.ToBoolean(((positionReport)data.dwData[0]).parkingBrake) && pushbackPath.Count > 0)
-                        {
-                            GeoCoordinate userPosition = new GeoCoordinate(((positionReport)data.dwData[0]).latitude,
+                        GeoCoordinate userPosition = new GeoCoordinate(((positionReport)data.dwData[0]).latitude,
                                                                            ((positionReport)data.dwData[0]).longitude);
-                            double reciprocalBearingToPoint = AngleMath.reciprocal(
-                                                              AngleMath.bearingDegrees(true, userPosition,
-                                                                                       pushbackPath.First()));
-                            double distanceToPoint = userPosition.GetDistanceTo(pushbackPath.First());
-                            sendText(distanceToPoint.ToString() + " ; " + reciprocalBearingToPoint.ToString() + " ; " +
-                                    ((positionReport)data.dwData[0]).heading);
-                            adjust positionAdjustment = new adjust();
-                            positionAdjustment.value = reciprocalBearingToPoint;
-                            simconnect.SetDataOnSimObject(DATA_DEFINITIONS.userVelocityRotY,
-                                                          SimConnect.SIMCONNECT_OBJECT_ID_USER, 0, positionAdjustment);
-                            if (distanceToPoint > 0.2)
+                        adjust positionAdjustment = new adjust();
+                        if (pushbackPath.Count > 0)
+                        {
+                            double distanceToPoint = userPosition.GetDistanceTo(pushbackPath[0]);
+
+                            if (Convert.ToBoolean(((positionReport)data.dwData[0]).parkingBrake) && pushbackPath.Count > 0)
+                                sendText("Release parking brake.");
+                            else if (!Convert.ToBoolean(((positionReport)data.dwData[0]).parkingBrake) && pushbackPath.Count > 1)
                             {
-                                positionAdjustment.value = -2.5;
-                                simconnect.SetDataOnSimObject(DATA_DEFINITIONS.userVelocityZ,
-                                                              SimConnect.SIMCONNECT_OBJECT_ID_USER, 0, positionAdjustment);
-                                break;
+
+                                double reciprocalBearingToPoint = AngleMath.reciprocal(
+                                                                  AngleMath.bearingDegrees(true, userPosition, pushbackPath[0]));
+                                double targetHeading = AngleMath.targetHeading(pushbackPath[0], pushbackPath[1]);
+                                double headingDelta = Math.Abs(((positionReport)data.dwData[0]).heading - targetHeading);
+                                if (headingDelta > 180)
+                                    headingDelta -= 180;
+                                double distanceToTurn = distanceToPoint - 
+                                                        AngleMath.distanceUntilTurn(headingDelta, 2 * turnRadius) - 3;
+
+                                sendText("Until turn: " + Math.Round(distanceToTurn, 2) + " m");
+
+                                if (distanceToTurn > 0.1 && !pushbackInTurn)
+                                {
+                                    if (AngleMath.leftOfUser(((positionReport)data.dwData[0]).heading, userPosition,
+                                        pushbackPath.First()) == AngleMath.DIRECTION.LEFT)
+                                    {
+                                        positionAdjustment.value = 0.1;
+                                        simconnect.SetDataOnSimObject(DATA_DEFINITIONS.userVelocityRotY,
+                                                                      SimConnect.SIMCONNECT_OBJECT_ID_USER, 0, positionAdjustment);
+                                    }
+                                    else if (AngleMath.leftOfUser(((positionReport)data.dwData[0]).heading, userPosition,
+                                        pushbackPath.First()) == AngleMath.DIRECTION.RIGHT)
+                                    {
+                                        positionAdjustment.value = -0.1;
+                                        simconnect.SetDataOnSimObject(DATA_DEFINITIONS.userVelocityRotY,
+                                                                      SimConnect.SIMCONNECT_OBJECT_ID_USER, 0, positionAdjustment);
+                                    }
+                                    else if (AngleMath.leftOfUser(((positionReport)data.dwData[0]).heading, userPosition,
+                                        pushbackPath.First()) == AngleMath.DIRECTION.STRAIGHT)
+                                    {
+                                        positionAdjustment.value = reciprocalBearingToPoint;
+                                        simconnect.SetDataOnSimObject(DATA_DEFINITIONS.userHeading,
+                                                                      SimConnect.SIMCONNECT_OBJECT_ID_USER, 0, positionAdjustment);
+                                    }
+                                }
+                                else
+                                {
+                                    pushbackInTurn = true;
+                                    if (AngleMath.leftOfUser(((positionReport)data.dwData[0]).heading, userPosition,
+                                        pushbackPath[1]) == AngleMath.DIRECTION.LEFT)
+                                        positionAdjustment.value = 1;
+                                    else if (AngleMath.leftOfUser(((positionReport)data.dwData[0]).heading, userPosition,
+                                        pushbackPath[1]) == AngleMath.DIRECTION.RIGHT)
+                                        positionAdjustment.value = -1;
+                                    else 
+                                    {
+                                        pushbackInTurn = false;
+                                        pushbackPath.RemoveAt(0);
+                                    }
+                                    simconnect.SetDataOnSimObject(DATA_DEFINITIONS.userVelocityRotY,
+                                                                      SimConnect.SIMCONNECT_OBJECT_ID_USER, 0, positionAdjustment);
+                                }
+
+                                if (distanceToPoint > 0.1)
+                                {
+                                    positionAdjustment.value = -1;
+                                    simconnect.SetDataOnSimObject(DATA_DEFINITIONS.userVelocityZ,
+                                                                  SimConnect.SIMCONNECT_OBJECT_ID_USER, 0, positionAdjustment);
+                                    break;
+                                }
+                                else
+                                {
+                                    pushbackPath.RemoveAt(0);
+                                    break;
+                                }
                             }
-                            else
+                            else if (!Convert.ToBoolean(((positionReport)data.dwData[0]).parkingBrake) && pushbackPath.Count == 1)
                             {
-                                pushbackPath.RemoveAt(0);
+                                sendText("Until stop: " + Math.Round(distanceToPoint, 2) + " m");
+                                if (distanceToPoint > 0.1)
+                                {
+                                    positionAdjustment.value = -1;
+                                    simconnect.SetDataOnSimObject(DATA_DEFINITIONS.userVelocityZ,
+                                                                  SimConnect.SIMCONNECT_OBJECT_ID_USER, 0, positionAdjustment);
+                                }
+                                else
+                                    pushbackPath.RemoveAt(0);
                                 break;
                             }
                         }
                         else if (!Convert.ToBoolean(((positionReport)data.dwData[0]).parkingBrake) && pushbackPath.Count == 0)
+                        {
                             sendText("Set parking brake.");
+                            pushbackPath.Clear();
+                            pushbackApproved = pushbackActive = pushbackInTurn = false;
+                            positionAdjustment.value = 0;
+                            simconnect.SetDataOnSimObject(DATA_DEFINITIONS.userVelocityZ,
+                                                          SimConnect.SIMCONNECT_OBJECT_ID_USER, 0, positionAdjustment);
+                        }
                         else if (Convert.ToBoolean(((positionReport)data.dwData[0]).parkingBrake))
                             simconnect.RequestDataOnSimObject(REQUESTS.userPositionDuringPushback,
                                                               DATA_DEFINITIONS.positionReport,

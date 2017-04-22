@@ -1,8 +1,16 @@
 ﻿using System;
 using System.Device.Location;
+using System.Windows;
 
 static class AngleMath
 {
+    public enum DIRECTION
+    {
+        RIGHT,
+        STRAIGHT,
+        LEFT,
+    }
+
     public static double Radians(double degrees)
     {
         return degrees * Math.PI / 180;
@@ -51,6 +59,33 @@ static class AngleMath
         return (Math.Cos(Radians(headingDelta) / 2) * turnDiameter * Math.Sin(Radians(headingDelta) / 2) -
                 Math.Tan(Math.PI / 2 - Radians(headingDelta)) * Math.Sin(Radians(headingDelta) / 2) * turnDiameter *
                 Math.Sin(Radians(headingDelta) / 2));
+    }
+
+    /// <summary>
+    /// Returns direction of end relative to user
+    /// </summary>
+    /// <param name="userHeading"></param>
+    /// <param name="user"></param>
+    /// <param name="end"></param>
+    /// <returns></returns>
+    public static DIRECTION leftOfUser(double userHeading, GeoCoordinate user, GeoCoordinate end)
+    {
+        double bearingToEnd = bearingDegrees(true, user, end);
+        Vector User = new Vector(Math.Cos(Radians(userHeading)), Math.Sin(Radians(userHeading)));
+        Vector End = new Vector(Math.Cos(Radians(bearingToEnd)), Math.Sin(Radians(bearingToEnd)));
+        double angle = Vector.AngleBetween(User, End);
+        if (180 - Math.Abs(angle) < 0.05)
+            return DIRECTION.STRAIGHT;
+        else if (angle > 0)
+            return DIRECTION.RIGHT; 
+        else
+            return DIRECTION.LEFT;
+    }
+
+    public static double targetHeading(GeoCoordinate midPoint, GeoCoordinate endPoint)
+    {
+        double bearingMidToEndPoint = bearingDegrees(true, midPoint, endPoint);
+        return reciprocal(bearingMidToEndPoint);
     }
 
     private  static double ToBearing(double radians)
