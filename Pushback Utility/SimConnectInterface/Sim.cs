@@ -30,19 +30,24 @@ namespace Pushback_Utility.SimConnectInterface
         // FIELDS
         // ------------------------------------------------------------------------------
 
+        // Status connection
         private bool simActive = false;
+
+        // Status pushback, reset at end of pushback
         private bool pushbackApproved = false;
         private bool pushbackActive = false;
         private bool pushbackInTurn = false;
 
-        private ActiveFiles activeFiles = null;
-
+        // Selection and path, reset at end of pushback
         private List<string> files = new List<string>();
         private List<GeoCoordinate> pushbackPath = new List<GeoCoordinate>();
 
+        private ActiveFiles activeFiles = null;
+
         // SimConnect object
         private SimConnect simconnect = null;
-        // Refrence to main window for GUI work
+
+        // Reference to main window for GUI work
         private MainWindow main;
 
         private enum DATA_DEFINITIONS
@@ -215,7 +220,7 @@ namespace Pushback_Utility.SimConnectInterface
         /// Displays given message as red static text
         /// </summary>
         /// <param name="text"></param>
-        public void sendText(string text)
+        private void sendText(string text)
         {
             if (connected)
             {
@@ -367,7 +372,7 @@ namespace Pushback_Utility.SimConnectInterface
                                     else if (AngleMath.leftOfUser(((positionReport)data.dwData[0]).heading, userPosition,
                                         pushbackPath[1]) == AngleMath.DIRECTION.RIGHT)
                                         positionAdjustment.value = -1;
-                                    else 
+                                    else
                                     {
                                         pushbackInTurn = false;
                                         pushbackPath.RemoveAt(0);
@@ -406,8 +411,11 @@ namespace Pushback_Utility.SimConnectInterface
                         else if (!Convert.ToBoolean(((positionReport)data.dwData[0]).parkingBrake) && pushbackPath.Count == 0)
                         {
                             sendText("Set parking brake.");
+
                             pushbackPath.Clear();
+                            files.Clear();
                             pushbackApproved = pushbackActive = pushbackInTurn = false;
+
                             positionAdjustment.value = 0;
                             simconnect.SetDataOnSimObject(DATA_DEFINITIONS.userVelocityZ,
                                                           SimConnect.SIMCONNECT_OBJECT_ID_USER, 0, positionAdjustment);
