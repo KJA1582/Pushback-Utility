@@ -332,38 +332,45 @@ namespace Pushback_Configurator.SimConnectInterface
             switch ((REQUESTS)data.dwRequestID)
             {
                 case REQUESTS.userPosition:
-                    GeoCoordinate userPosition = new GeoCoordinate(((positionReport)data.dwData[0]).latitude,
-                                                              ((positionReport)data.dwData[0]).longitude);
-                    altitude = ((positionReport)data.dwData[0]).altitude * 3.28084;
-                    closestAirport = main.activeFiles.getClosestAirportTo(userPosition);
-                    airport = new BGLFile(((App)Application.Current).registryPath, closestAirport.Item2).
-                                      findAirport(closestAirport.Item1);
-                    parking = airport.parkings.findClosestTo(userPosition);
-                    // Get parking path which references the parking point ID
-                    TaxiwayPath.Point parkingPath = airport.paths.getBy(TaxiwayPath.TYPE.PARKING, (UInt16)parking.index);
-                    // Get point to push back to
-                    setMarkers.Add(airport.points.findByIndex(parkingPath.startPointIndex));
-                    // Set Overwrites
-                    List<String> temp = new List<string>();
-                    temp.Add(null);
-                    foreach (string file in Directory.GetFiles("airports\\"))
+                    try
                     {
-                        if (file.Contains(closestAirport.Item2.Split('\\').Last() + closestAirport.Item1 +
-                                               parking.type.ToString() + parking.name.ToString() + parking.number.ToString()))
-                            temp.Add(file);
+                        GeoCoordinate userPosition = new GeoCoordinate(((positionReport)data.dwData[0]).latitude,
+                                                                  ((positionReport)data.dwData[0]).longitude);
+                        altitude = ((positionReport)data.dwData[0]).altitude * 3.28084;
+                        closestAirport = main.activeFiles.getClosestAirportTo(userPosition);
+                        airport = new BGLFile(((App)Application.Current).registryPath, closestAirport.Item2).
+                                          findAirport(closestAirport.Item1);
+                        parking = airport.parkings.findClosestTo(userPosition);
+                        // Get parking path which references the parking point ID
+                        TaxiwayPath.Point parkingPath = airport.paths.getBy(TaxiwayPath.TYPE.PARKING, (UInt16)parking.index);
+                        // Get point to push back to
+                        setMarkers.Add(airport.points.findByIndex(parkingPath.startPointIndex));
+                        // Set Overwrites
+                        List<String> temp = new List<string>();
+                        temp.Add(null);
+                        foreach (string file in Directory.GetFiles("airports\\"))
+                        {
+                            if (file.Contains(closestAirport.Item2.Split('\\').Last() + closestAirport.Item1 +
+                                                   parking.type.ToString() + parking.name.ToString() + parking.number.ToString()))
+                                temp.Add(file);
+                        }
+                        main.overwrite.ItemsSource = temp;
+                        main.parking.Content = "Parking: " + parking.type.ToString() + " " + parking.name.ToString() + " " +
+                                       parking.number.ToString();
+                        // Set this marker
+                        SIMCONNECT_DATA_INITPOSITION init = new SIMCONNECT_DATA_INITPOSITION();
+                        init.Latitude = airport.points.findByIndex(parkingPath.startPointIndex).location.Latitude;
+                        init.Longitude = airport.points.findByIndex(parkingPath.startPointIndex).location.Longitude;
+                        init.Altitude = altitude;
+                        simconnect.AICreateSimulatedObject("set", init, REQUESTS.markerSet);
+                        tempPoints = airport.paths.getBy(true, TaxiwayPath.TYPE.PARKING, parkingPath.startPointIndex);
+                        // Enable
+                        customizationActive = true;
+                    } 
+                    catch (Exception ex)
+                    {
+                        MessageBox.Show("Exception: " + ex.Message, "Error", MessageBoxButton.OK, MessageBoxImage.Error);
                     }
-                    main.overwrite.ItemsSource = temp;
-                    main.parking.Content = "Parking: " + parking.type.ToString() + " " + parking.name.ToString() + " " +
-                                   parking.number.ToString();
-                    // Set this marker
-                    SIMCONNECT_DATA_INITPOSITION init = new SIMCONNECT_DATA_INITPOSITION();
-                    init.Latitude = airport.points.findByIndex(parkingPath.startPointIndex).location.Latitude;
-                    init.Longitude = airport.points.findByIndex(parkingPath.startPointIndex).location.Longitude;
-                    init.Altitude = altitude;
-                    simconnect.AICreateSimulatedObject("set", init, REQUESTS.markerSet);
-                    tempPoints = airport.paths.getBy(true, TaxiwayPath.TYPE.PARKING, parkingPath.startPointIndex);
-                    // Enable
-                    customizationActive = true;
                     break;
                 default:
                     break;

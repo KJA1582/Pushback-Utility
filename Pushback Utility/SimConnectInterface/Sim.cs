@@ -322,35 +322,33 @@ namespace Pushback_Utility.SimConnectInterface
                         if (pushbackPath.Count > 0)
                         {
                             double distanceToPoint = userPosition.GetDistanceTo(pushbackPath[0]);
+                            double reciprocalBearingToPoint = AngleMath.reciprocal(
+                                                                  AngleMath.bearingDegrees(true, userPosition, pushbackPath[0]));
 
                             if (Convert.ToBoolean(((positionReport)data.dwData[0]).parkingBrake) && pushbackPath.Count > 0)
                                 sendText("Release parking brake.");
                             else if (!Convert.ToBoolean(((positionReport)data.dwData[0]).parkingBrake) && pushbackPath.Count > 1)
                             {
-
-                                double reciprocalBearingToPoint = AngleMath.reciprocal(
-                                                                  AngleMath.bearingDegrees(true, userPosition, pushbackPath[0]));
                                 double targetHeading = AngleMath.targetHeading(pushbackPath[0], pushbackPath[1]);
                                 double headingDelta = Math.Abs(((positionReport)data.dwData[0]).heading - targetHeading);
                                 if (headingDelta > 180)
-                                    headingDelta -= 180;
-                                double distanceToTurn = distanceToPoint - AngleMath.distanceUntilTurn(headingDelta, 2 * turnRadius);
+                                    headingDelta -= 180;;
 
-                                sendText("Until turn: " + Math.Round(distanceToTurn, 2) + " m");
+                                sendText("Until turn: " + Math.Round(distanceToPoint, 2) + " m");
 
-                                if (distanceToTurn > 0.1 && !pushbackInTurn)
+                                if (distanceToPoint > 0.1 && !pushbackInTurn)
                                 {
                                     if (AngleMath.leftOfUser(((positionReport)data.dwData[0]).heading, userPosition,
                                         pushbackPath.First()) == AngleMath.DIRECTION.LEFT)
                                     {
-                                        positionAdjustment.value = 0.1;
+                                        positionAdjustment.value = 1;
                                         simconnect.SetDataOnSimObject(DATA_DEFINITIONS.userVelocityRotY,
                                                                       SimConnect.SIMCONNECT_OBJECT_ID_USER, 0, positionAdjustment);
                                     }
                                     else if (AngleMath.leftOfUser(((positionReport)data.dwData[0]).heading, userPosition,
                                              pushbackPath.First()) == AngleMath.DIRECTION.RIGHT)
                                     {
-                                        positionAdjustment.value = -0.1;
+                                        positionAdjustment.value = -1;
                                         simconnect.SetDataOnSimObject(DATA_DEFINITIONS.userVelocityRotY,
                                                                       SimConnect.SIMCONNECT_OBJECT_ID_USER, 0, positionAdjustment);
                                     }
@@ -365,8 +363,13 @@ namespace Pushback_Utility.SimConnectInterface
                                 else
                                 {
                                     pushbackInTurn = true;
-                                    if (AngleMath.leftOfUser(((positionReport)data.dwData[0]).heading, userPosition,
-                                        pushbackPath[1]) == AngleMath.DIRECTION.LEFT)
+                                    if (headingDelta < 0.1)
+                                    {
+                                        pushbackInTurn = false;
+                                        pushbackPath.RemoveAt(0);
+                                    }
+                                    else if (AngleMath.leftOfUser(((positionReport)data.dwData[0]).heading, userPosition,
+                                             pushbackPath[1]) == AngleMath.DIRECTION.LEFT)
                                         positionAdjustment.value = 1;
                                     else if (AngleMath.leftOfUser(((positionReport)data.dwData[0]).heading, userPosition,
                                              pushbackPath[1]) == AngleMath.DIRECTION.RIGHT)
@@ -380,12 +383,18 @@ namespace Pushback_Utility.SimConnectInterface
                                                                       SimConnect.SIMCONNECT_OBJECT_ID_USER, 0, positionAdjustment);
                                 }
 
-                                if (distanceToPoint > 0.1)
+                                if (distanceToPoint > 0.1 && !pushbackInTurn)
                                 {
                                     positionAdjustment.value = -1;
                                     simconnect.SetDataOnSimObject(DATA_DEFINITIONS.userVelocityZ,
                                                                   SimConnect.SIMCONNECT_OBJECT_ID_USER, 0, positionAdjustment);
                                     break;
+                                }
+                                else if (pushbackInTurn)
+                                {
+                                    positionAdjustment.value = 0;
+                                    simconnect.SetDataOnSimObject(DATA_DEFINITIONS.userVelocityZ,
+                                                                  SimConnect.SIMCONNECT_OBJECT_ID_USER, 0, positionAdjustment);
                                 }
                                 else
                                 {
@@ -398,6 +407,27 @@ namespace Pushback_Utility.SimConnectInterface
                                 sendText("Until stop: " + Math.Round(distanceToPoint, 2) + " m");
                                 if (distanceToPoint > 0.1)
                                 {
+                                    if (AngleMath.leftOfUser(((positionReport)data.dwData[0]).heading, userPosition,
+                                        pushbackPath.First()) == AngleMath.DIRECTION.LEFT)
+                                    {
+                                        positionAdjustment.value = 1;
+                                        simconnect.SetDataOnSimObject(DATA_DEFINITIONS.userVelocityRotY,
+                                                                      SimConnect.SIMCONNECT_OBJECT_ID_USER, 0, positionAdjustment);
+                                    }
+                                    else if (AngleMath.leftOfUser(((positionReport)data.dwData[0]).heading, userPosition,
+                                             pushbackPath.First()) == AngleMath.DIRECTION.RIGHT)
+                                    {
+                                        positionAdjustment.value = -1;
+                                        simconnect.SetDataOnSimObject(DATA_DEFINITIONS.userVelocityRotY,
+                                                                      SimConnect.SIMCONNECT_OBJECT_ID_USER, 0, positionAdjustment);
+                                    }
+                                    else if (AngleMath.leftOfUser(((positionReport)data.dwData[0]).heading, userPosition,
+                                             pushbackPath.First()) == AngleMath.DIRECTION.STRAIGHT)
+                                    {
+                                        positionAdjustment.value = reciprocalBearingToPoint;
+                                        simconnect.SetDataOnSimObject(DATA_DEFINITIONS.userHeading,
+                                                                      SimConnect.SIMCONNECT_OBJECT_ID_USER, 0, positionAdjustment);
+                                    }
                                     positionAdjustment.value = -1;
                                     simconnect.SetDataOnSimObject(DATA_DEFINITIONS.userVelocityZ,
                                                                   SimConnect.SIMCONNECT_OBJECT_ID_USER, 0, positionAdjustment);

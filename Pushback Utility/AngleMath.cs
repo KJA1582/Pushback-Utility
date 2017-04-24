@@ -74,7 +74,7 @@ static class AngleMath
         Vector User = new Vector(Math.Cos(Radians(userHeading)), Math.Sin(Radians(userHeading)));
         Vector End = new Vector(Math.Cos(Radians(bearingToEnd)), Math.Sin(Radians(bearingToEnd)));
         double angle = Vector.AngleBetween(User, End);
-        if (180 - Math.Abs(angle) < 0.05)
+        if (180 - Math.Abs(angle) < 0.1)
             return DIRECTION.STRAIGHT;
         else if (angle > 0)
             return DIRECTION.RIGHT; 
