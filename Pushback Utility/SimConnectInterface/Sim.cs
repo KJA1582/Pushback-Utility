@@ -200,7 +200,7 @@ namespace Pushback_Utility.SimConnectInterface
                 {
                     // A connection to the SimConnect server could not be established
                     MessageBox.Show("Exception: " + ex.Message, "Error", MessageBoxButton.OK, MessageBoxImage.Error);
-                    closeConnection();
+                    main.button.Content = "Connect to FS";
                 }
             }
         }
@@ -334,8 +334,7 @@ namespace Pushback_Utility.SimConnectInterface
                                 double headingDelta = Math.Abs(((positionReport)data.dwData[0]).heading - targetHeading);
                                 if (headingDelta > 180)
                                     headingDelta -= 180;
-                                double distanceToTurn = distanceToPoint - 
-                                                        AngleMath.distanceUntilTurn(headingDelta, 2 * turnRadius) - 3;
+                                double distanceToTurn = distanceToPoint - AngleMath.distanceUntilTurn(headingDelta, 2 * turnRadius);
 
                                 sendText("Until turn: " + Math.Round(distanceToTurn, 2) + " m");
 
@@ -349,14 +348,14 @@ namespace Pushback_Utility.SimConnectInterface
                                                                       SimConnect.SIMCONNECT_OBJECT_ID_USER, 0, positionAdjustment);
                                     }
                                     else if (AngleMath.leftOfUser(((positionReport)data.dwData[0]).heading, userPosition,
-                                        pushbackPath.First()) == AngleMath.DIRECTION.RIGHT)
+                                             pushbackPath.First()) == AngleMath.DIRECTION.RIGHT)
                                     {
                                         positionAdjustment.value = -0.1;
                                         simconnect.SetDataOnSimObject(DATA_DEFINITIONS.userVelocityRotY,
                                                                       SimConnect.SIMCONNECT_OBJECT_ID_USER, 0, positionAdjustment);
                                     }
                                     else if (AngleMath.leftOfUser(((positionReport)data.dwData[0]).heading, userPosition,
-                                        pushbackPath.First()) == AngleMath.DIRECTION.STRAIGHT)
+                                             pushbackPath.First()) == AngleMath.DIRECTION.STRAIGHT)
                                     {
                                         positionAdjustment.value = reciprocalBearingToPoint;
                                         simconnect.SetDataOnSimObject(DATA_DEFINITIONS.userHeading,
@@ -370,7 +369,7 @@ namespace Pushback_Utility.SimConnectInterface
                                         pushbackPath[1]) == AngleMath.DIRECTION.LEFT)
                                         positionAdjustment.value = 1;
                                     else if (AngleMath.leftOfUser(((positionReport)data.dwData[0]).heading, userPosition,
-                                        pushbackPath[1]) == AngleMath.DIRECTION.RIGHT)
+                                             pushbackPath[1]) == AngleMath.DIRECTION.RIGHT)
                                         positionAdjustment.value = -1;
                                     else
                                     {
