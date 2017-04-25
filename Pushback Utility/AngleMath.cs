@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Device.Location;
 using System.Windows;
 
@@ -82,10 +83,71 @@ static class AngleMath
             return DIRECTION.LEFT;
     }
 
+    /// <summary>
+    /// Calculates target heading of pushback
+    /// </summary>
+    /// <param name="midPoint"></param>
+    /// <param name="endPoint"></param>
+    /// <returns></returns>
     public static double targetHeading(GeoCoordinate midPoint, GeoCoordinate endPoint)
     {
         double bearingMidToEndPoint = bearingDegrees(true, midPoint, endPoint);
         return reciprocal(bearingMidToEndPoint);
+    }
+
+    /// <summary>
+    /// Converts lat/lon Points to planar coordinates using complex number theory
+    /// </summary>
+    /// <param name="referencePoint"></param>
+    /// <param name="path"></param>
+    /// <returns></returns>
+    public static List<Point> convertToPlanarPoints(GeoCoordinate referencePoint, GeoCoordinate[] path)
+    {
+        List<Point> ret = new List<Point>();
+        ret.Add(new Point(0, 0)); // referencePoint is 0,0
+        foreach (GeoCoordinate point in path)
+        {
+            double bearingTo = bearingDegrees(false, referencePoint, point);
+            double distanceTo = referencePoint.GetDistanceTo(point);
+            Point pPoint = new Point();
+            pPoint.X = distanceTo * Math.Cos(bearingTo);
+            pPoint.Y = distanceTo * Math.Sin(bearingTo);
+            ret.Add(pPoint);
+        }
+        return ret;
+    }
+
+    public static Point getPointOnBezier(double t, Point[] points)
+    {
+        // Sum from i to n over
+        Point ret = new Point();
+        for (int i = 0; i < points.Length; i++)
+        {
+            double binomial = binomCoefficient(points.Length-1, i);
+            ret.X = binomial * Math.Pow(t, i) * Math.Pow((1 - t), points.Length-1 - i) * points[i].X;
+            ret.Y = binomial * Math.Pow(t, i) * Math.Pow((1 - t), points.Length-1 - i) * points[i].Y;
+        }
+        return ret;
+    }
+
+    /// <summary>
+    /// Calculates the binomial coefficient (nCk) (N items, choose k)
+    /// </summary>
+    /// <param name="n">the number items</param>
+    /// <param name="k">the number to choose</param>
+    /// <returns>the binomial coefficient</returns>
+    private static double binomCoefficient(int n, int k)
+    {
+        if (k > n) { return 0; }
+        if (n == k) { return 1; } // only one way to chose when n == k
+        if (k > n - k) { k = n - k; } // Everything is symmetric around n-k, so it is quicker to iterate over a smaller k than a larger one.
+        double c = 1;
+        for (double i = 1; i <= k; i++)
+        {
+            c *= n--;
+            c /= i;
+        }
+        return c;
     }
 
     private  static double ToBearing(double radians)

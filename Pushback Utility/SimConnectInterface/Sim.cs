@@ -44,6 +44,10 @@ namespace Pushback_Utility.SimConnectInterface
 
         private ActiveFiles activeFiles = null;
 
+        // Bezier stuff, reset at end of pushback
+        private GeoCoordinate referencePoint = null;
+        private List<Point> planarPoints = null;
+
         // SimConnect object
         private SimConnect simconnect = null;
 
@@ -358,6 +362,15 @@ namespace Pushback_Utility.SimConnectInterface
                                         positionAdjustment.value = reciprocalBearingToPoint;
                                         simconnect.SetDataOnSimObject(DATA_DEFINITIONS.userHeading,
                                                                       SimConnect.SIMCONNECT_OBJECT_ID_USER, 0, positionAdjustment);
+                                        if (referencePoint == null)
+                                        {
+                                            referencePoint = userPosition;
+                                            planarPoints = AngleMath.convertToPlanarPoints(userPosition, pushbackPath.ToArray());
+                                        }
+                                        
+                                        Point ptS = AngleMath.getPointOnBezier(0, planarPoints.ToArray());
+                                        Point ptM = AngleMath.getPointOnBezier(0.5, planarPoints.ToArray());
+                                        Point ptE = AngleMath.getPointOnBezier(1, planarPoints.ToArray());
                                     }
                                 }
                                 else
@@ -444,6 +457,8 @@ namespace Pushback_Utility.SimConnectInterface
                             pushbackPath.Clear();
                             files.Clear();
                             pushbackApproved = pushbackActive = pushbackInTurn = false;
+                            planarPoints = null;
+                            referencePoint = null;
 
                             positionAdjustment.value = 0;
                             simconnect.SetDataOnSimObject(DATA_DEFINITIONS.userVelocityZ,
