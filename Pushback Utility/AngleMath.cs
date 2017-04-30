@@ -117,6 +117,12 @@ static class AngleMath
         return ret;
     }
 
+    /// <summary>
+    /// Calculates point on a bézier curve through give point array
+    /// </summary>
+    /// <param name="t"></param>
+    /// <param name="points"></param>
+    /// <returns></returns>
     public static Point getPointOnBezier(double t, Point[] points)
     {
         // Sum from i to n over
@@ -128,6 +134,22 @@ static class AngleMath
             ret.Y = binomial * Math.Pow(t, i) * Math.Pow((1 - t), points.Length-1 - i) * points[i].Y;
         }
         return ret;
+    }
+
+    public static GeoCoordinate convertToLatLon(GeoCoordinate referencePoint, Point point)
+    {
+        double bearing = Math.Atan2(point.Y, point.X);
+        if (bearing < 0)
+            bearing += 2 * Math.PI;
+        double angularDistance = Math.Sqrt(Math.Pow(point.X, 2) + Math.Pow(point.Y, 2)) / 6371000;
+
+        double lat = Math.Asin(Math.Sin(Radians(referencePoint.Latitude)) * Math.Cos(angularDistance) +
+                               Math.Cos(Radians(referencePoint.Latitude)) * Math.Sin(angularDistance) * Math.Cos(bearing));
+        double lon = Radians(referencePoint.Longitude) + Math.Atan2(Math.Sin(bearing) * Math.Sin(angularDistance) * 
+                                                                    Math.Cos(Radians(referencePoint.Latitude)), 
+                                                                    Math.Cos(angularDistance) - 
+                                                                    Math.Sin(Radians(referencePoint.Latitude)) * Math.Sin(lat));
+        return new GeoCoordinate(Degrees(lat), Degrees(lon));
     }
 
     /// <summary>
